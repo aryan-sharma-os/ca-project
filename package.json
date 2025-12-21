@@ -1,0 +1,16 @@
+{
+  "name": "telemedicine-nabh",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Telemedicine Access for Rural Healthcare (NABH-friendly) - MERN stack (JS only)",
+  "scripts": {
+    "dev": "concurrently -k \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "start": "npm --prefix server run start",
+    "build:client": "npm --prefix client run build",
+    "preview:client": "npm --prefix client run preview"
+  },
+  "dependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

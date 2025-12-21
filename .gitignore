@@ -1,0 +1,16 @@
+# Root ignores
+node_modules/
+.env
+.DS_Store
+.vscode/
+client/node_modules/
+server/node_modules/
+client/dist/
+server/logs/
+server/uploads/
+server/.env
+client/.env
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
