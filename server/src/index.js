@@ -34,6 +34,10 @@ const io = new SocketIOServer(server, {
 // DB
 await connectDB(process.env.MONGO_URI);
 
+app.get('/', (req, res) => {
+  res.send('Medical Consultation Platform API is running');
+});
+
 // Middleware
 app.use(helmet());
 app.use(cors({
