@@ -13,6 +13,7 @@ A JS-only MERN telemedicine platform focused on rural healthcare access and NABH
 - Secure headers (helmet), rate limit, input validation
 - PWA: manifest + service worker with offline shell caching
 - Health endpoint and client health widget
+- Dark mode/light mode toggle with persistence
 
 ## Quick Start
 
@@ -46,6 +47,8 @@ npm run dev
 
 - Server: http://localhost:5000
 - Client (Vite): http://localhost:5173
+
+Theme toggle is available in the top navbar. Preference is saved in localStorage and respected on reload.
 
 ### 4) Build client
 

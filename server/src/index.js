@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import mongoose from 'mongoose';
@@ -17,6 +18,7 @@ import prescriptionRoutes from './routes/prescriptions.js';
 import userRoutes from './routes/users.js';
 import doctorRoutes from './routes/doctor.js';
 import doctorsRoutes from './routes/doctors.js';
+import adminRoutes from './routes/admin.js';
 import { registerSocketHandlers } from './controllers/chatController.js';
 
 dotenv.config();
@@ -47,6 +49,9 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(rateLimiter);
 
+// Static: serve generated prescription PDFs
+app.use('/uploads', express.static(path.join(process.cwd(), 'server', 'uploads')));
+
 // Health
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', mongo: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' });
@@ -60,6 +65,7 @@ app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/doctor', doctorRoutes);
 app.use('/api/doctors', doctorsRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use(errorHandler);
 

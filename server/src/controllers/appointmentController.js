@@ -31,12 +31,15 @@ export async function createAppointment(req, res) {
 
 export async function listMyAppointments(req, res) {
   const filter = req.user.role === 'doctor' ? { doctorId: req.user.id } : { patientId: req.user.id };
-  const appts = await Appointment.find(filter).sort({ startTime: 1 });
+  const appts = await Appointment.find(filter)
+    .sort({ startTime: 1 })
+    .populate('doctorId', 'name')
+    .populate('patientId', 'name');
   res.json(appts);
 }
 
 export const validateUpdate = [
-  body('status').optional().isIn(['scheduled', 'completed', 'cancelled'])
+  body('status').optional().isIn(['requested', 'scheduled', 'completed', 'cancelled'])
 ];
 
 export async function updateAppointment(req, res) {
@@ -83,4 +86,14 @@ export async function rescheduleAppointment(req, res) {
   if (!appt) return res.status(404).json({ message: 'Not found or unauthorized' });
   await AuditLog.create({ userId: req.user.id, action: 'appointment_reschedule', ip: req.ip });
   res.json(appt);
+}
+
+export async function deleteAppointmentHard(req, res) {
+  const { id } = req.params;
+  const appt = await Appointment.findOne({ _id: id, patientId: req.user.id });
+  if (!appt) return res.status(404).json({ message: 'Not found or unauthorized' });
+  if (appt.status !== 'cancelled') return res.status(400).json({ message: 'Only cancelled appointments can be deleted' });
+  await Appointment.deleteOne({ _id: id });
+  await AuditLog.create({ userId: req.user.id, action: 'appointment_delete', ip: req.ip });
+  res.json({ _id: id, deleted: true });
 }

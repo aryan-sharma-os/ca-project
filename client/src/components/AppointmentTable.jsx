@@ -14,7 +14,9 @@ export default function AppointmentTable({ items = [], actions = {} }) {
         <tbody>
           {items.map((a) => (
             <tr key={a._id} className="border-b">
-              <td className="py-2 pr-4 font-mono">{a.patientId}</td>
+              <td className="py-2 pr-4 font-mono">
+                {String(a.patientId).slice(-6)}
+              </td>
               <td className="py-2 pr-4">
                 {new Date(a.startTime).toLocaleString()}
               </td>
@@ -22,7 +24,15 @@ export default function AppointmentTable({ items = [], actions = {} }) {
                 {new Date(a.endTime).toLocaleString()}
               </td>
               <td className="py-2 pr-4">
-                <span className="px-2 py-1 rounded bg-gray-100 text-gray-700">
+                <span
+                  className={`px-2 py-1 rounded border ${
+                    a.status === "completed"
+                      ? "bg-green-100 text-green-700 border-green-200"
+                      : a.status === "cancelled"
+                      ? "bg-red-100 text-red-700 border-red-200"
+                      : "bg-yellow-100 text-yellow-700 border-yellow-200"
+                  }`}
+                >
                   {a.status}
                 </span>
               </td>

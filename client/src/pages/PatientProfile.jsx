@@ -6,6 +6,7 @@ import {
   fetchMyAppointments,
   createAppointment,
   cancelAppointment,
+  deleteAppointmentHard,
 } from "../redux/slices/appointmentsSlice.js";
 import { fetchPrescriptions } from "../redux/slices/prescriptionsSlice.js";
 
@@ -17,11 +18,13 @@ export default function PatientProfile() {
   const { items: prescriptions, loading: presLoading } = useSelector(
     (s) => s.prescriptions
   );
+
   const [doctorId, setDoctorId] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [consentGiven, setConsentGiven] = useState(true);
   const [formError, setFormError] = useState("");
+  const [formSuccess, setFormSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState({
     doctorId: "",
     startTime: "",
@@ -49,9 +52,9 @@ export default function PatientProfile() {
     if (!startTime) errs.startTime = "Start time is required";
     if (!endTime) errs.endTime = "End time is required";
     if (startTime && endTime) {
-      const s = new Date(startTime);
-      const e = new Date(endTime);
-      const now = new Date();
+      const s = new Date(startTime),
+        e = new Date(endTime),
+        now = new Date();
       if (isNaN(s.getTime())) errs.startTime = "Invalid start time";
       if (isNaN(e.getTime())) errs.endTime = "Invalid end time";
       if (!errs.startTime && !errs.endTime) {
@@ -60,9 +63,8 @@ export default function PatientProfile() {
       }
     }
     setFieldErrors(errs);
-    const ok = !errs.doctorId && !errs.startTime && !errs.endTime;
     setFormError("");
-    return ok;
+    return !errs.doctorId && !errs.startTime && !errs.endTime;
   };
 
   useEffect(() => {
@@ -73,13 +75,16 @@ export default function PatientProfile() {
         const { data } = await api.get("/api/doctors");
         const list = Array.isArray(data) ? data : data?.items || [];
         setDoctors(list);
-        if (!doctorId && list.length > 0) {
-          setDoctorId(list[0]?._id || "");
-        }
-      } catch (err) {
-        // Ignore listing errors; user can still paste ID
-      }
+        if (!doctorId && list.length > 0) setDoctorId(list[0]?._id || "");
+      } catch {}
     })();
+  }, [dispatch]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      dispatch(fetchPrescriptions());
+    }, 20000);
+    return () => clearInterval(t);
   }, [dispatch]);
 
   const onCreate = async (e) => {
@@ -93,8 +98,12 @@ export default function PatientProfile() {
       setStartTime("");
       setEndTime("");
       setConsentGiven(true);
+      setFormSuccess("Appointment requested successfully.");
+      setFormError("");
+      dispatch(fetchMyAppointments());
     } else {
       setFormError(res.payload?.message || "Failed to create appointment");
+      setFormSuccess("");
     }
   };
 
@@ -120,8 +129,8 @@ export default function PatientProfile() {
                 <option value="">Select a doctor</option>
                 {doctors.map((d) => (
                   <option key={d._id} value={d._id}>
-                    {d.name || d.fullName || "Doctor"}{" "}
-                    {d.specialization ? `— ${d.specialization}` : ""}
+                    {d.name || d.fullName || "Doctor"}
+                    {d.specialization ? ` — ${d.specialization}` : ""}
                   </option>
                 ))}
               </select>
@@ -136,6 +145,7 @@ export default function PatientProfile() {
             {fieldErrors.doctorId && (
               <p className="text-xs text-red-600">{fieldErrors.doctorId}</p>
             )}
+            <label className="text-xs text-gray-600">Start Time</label>
             <input
               className="input"
               type="datetime-local"
@@ -146,6 +156,7 @@ export default function PatientProfile() {
             {fieldErrors.startTime && (
               <p className="text-xs text-red-600">{fieldErrors.startTime}</p>
             )}
+            <label className="text-xs text-gray-600">End Time</label>
             <input
               className="input"
               type="datetime-local"
@@ -165,6 +176,9 @@ export default function PatientProfile() {
               Consent Given
             </label>
             {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formSuccess && (
+              <p className="text-xs text-green-700">{formSuccess}</p>
+            )}
             <button
               className="btn-primary"
               disabled={
@@ -179,14 +193,33 @@ export default function PatientProfile() {
             </button>
           </form>
           <p className="text-xs text-gray-500 mt-2">
-            Note: Enter a valid doctor ID. Admin can share IDs.
+            Note: Choose a doctor from the list or enter a valid ID.
           </p>
         </div>
 
         <div className="card p-6">
-          <h2 className="font-semibold">My Appointments</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">My Appointments</h2>
+            <button
+              className="btn-secondary !px-3 !py-1"
+              onClick={() => dispatch(fetchMyAppointments())}
+            >
+              Refresh
+            </button>
+          </div>
           {apptLoading ? (
-            <p className="text-sm text-gray-500 mt-2">Loading…</p>
+            <div className="space-y-3 mt-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-12 rounded-lg shimmer animate-shimmer"
+                ></div>
+              ))}
+            </div>
+          ) : appointments.length === 0 ? (
+            <p className="text-sm text-gray-600 mt-3">
+              You have no appointments yet.
+            </p>
           ) : (
             <ul className="mt-3 divide-y">
               {appointments.map((a) => (
@@ -196,7 +229,12 @@ export default function PatientProfile() {
                 >
                   <div>
                     <p className="text-sm">
-                      Doctor: <span className="font-medium">{a.doctorId}</span>
+                      Doctor:{" "}
+                      <span className="font-medium">
+                        {typeof a.doctorId === "object" && a.doctorId?.name
+                          ? a.doctorId.name
+                          : String(a.doctorId).slice(-6)}
+                      </span>
                     </p>
                     <p className="text-xs text-gray-600">
                       {new Date(a.startTime).toLocaleString()} →{" "}
@@ -204,7 +242,15 @@ export default function PatientProfile() {
                     </p>
                     <p className="text-xs">
                       Status:{" "}
-                      <span className="font-medium">
+                      <span
+                        className={`px-2 py-0.5 ml-1 rounded border ${
+                          a.status === "completed"
+                            ? "bg-green-100 text-green-700 border-green-200"
+                            : a.status === "cancelled"
+                            ? "bg-red-100 text-red-700 border-red-200"
+                            : "bg-yellow-100 text-yellow-700 border-yellow-200"
+                        }`}
+                      >
                         {a.status || "scheduled"}
                       </span>
                     </p>
@@ -212,12 +258,24 @@ export default function PatientProfile() {
                       Room: <span className="font-mono">{a.roomId}</span>
                     </p>
                   </div>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => dispatch(cancelAppointment(a._id))}
-                  >
-                    Cancel
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {a.status !== "cancelled" && (
+                      <button
+                        className="btn-secondary"
+                        onClick={() => dispatch(cancelAppointment(a._id))}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    {a.status === "cancelled" && (
+                      <button
+                        className="btn-secondary"
+                        onClick={() => dispatch(deleteAppointmentHard(a._id))}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -226,7 +284,15 @@ export default function PatientProfile() {
       </div>
 
       <div className="card p-6 mt-6">
-        <h2 className="font-semibold">My Prescriptions</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">My Prescriptions</h2>
+          <button
+            className="btn-secondary !px-3 !py-1"
+            onClick={() => dispatch(fetchPrescriptions())}
+          >
+            Refresh
+          </button>
+        </div>
         {presLoading ? (
           <p className="text-sm text-gray-500 mt-2">Loading…</p>
         ) : (
@@ -235,15 +301,27 @@ export default function PatientProfile() {
               <li key={p._id} className="p-3 border rounded-lg">
                 <p className="text-sm">
                   Appointment:{" "}
-                  <span className="font-mono">{p.appointmentId}</span>
+                  <span className="font-mono">
+                    {typeof p.appointmentId === "object" &&
+                    p.appointmentId?.startTime
+                      ? new Date(p.appointmentId.startTime).toLocaleString()
+                      : String(p.appointmentId).slice(-6)}
+                  </span>
                 </p>
                 <p className="text-sm">
-                  Doctor: <span className="font-mono">{p.doctorId}</span>
+                  Doctor:{" "}
+                  <span className="font-medium">
+                    {typeof p.doctorId === "object" && p.doctorId?.name
+                      ? p.doctorId.name
+                      : String(p.doctorId).slice(-6)}
+                  </span>
                 </p>
                 <ul className="mt-2 text-xs list-disc list-inside text-gray-700">
                   {p.items?.map((it, idx) => (
                     <li key={idx}>
-                      {it.name} – {it.dose}
+                      {it.name} – {it.dosage}
+                      {it.frequency ? ` • ${it.frequency}` : ""}
+                      {it.duration ? ` • ${it.duration}` : ""}
                     </li>
                   ))}
                 </ul>

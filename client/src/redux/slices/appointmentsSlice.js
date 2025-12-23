@@ -37,6 +37,24 @@ export const cancelAppointment = createAsyncThunk('appointments/cancel', async (
   }
 });
 
+export const rescheduleAppointment = createAsyncThunk('appointments/reschedule', async ({ id, startTime, endTime }, { rejectWithValue }) => {
+  try {
+    const res = await api.put(`/api/appointments/reschedule/${id}`, { startTime, endTime });
+    return res.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data || { message: 'Failed to reschedule appointment' });
+  }
+});
+
+export const deleteAppointmentHard = createAsyncThunk('appointments/deleteHard', async (id, { rejectWithValue }) => {
+  try {
+    const res = await api.delete(`/api/appointments/hard/${id}`);
+    return res.data; // { _id, deleted: true }
+  } catch (err) {
+    return rejectWithValue(err.response?.data || { message: 'Failed to delete appointment' });
+  }
+});
+
 const slice = createSlice({
   name: 'appointments',
   initialState: { items: [], loading: false, error: null },
@@ -52,6 +70,10 @@ const slice = createSlice({
       b.addCase(updateAppointment.rejected, (s,a)=>{ s.error = a.payload?.message || 'Failed to update appointment'; });
       b.addCase(cancelAppointment.fulfilled, (s,a)=>{ s.error = null; const i = s.items.findIndex(x=>x._id===a.payload._id); if(i>=0) s.items[i]=a.payload; });
       b.addCase(cancelAppointment.rejected, (s,a)=>{ s.error = a.payload?.message || 'Failed to cancel appointment'; });
+      b.addCase(rescheduleAppointment.fulfilled, (s,a)=>{ s.error = null; const i = s.items.findIndex(x=>x._id===a.payload._id); if(i>=0) s.items[i]=a.payload; });
+      b.addCase(rescheduleAppointment.rejected, (s,a)=>{ s.error = a.payload?.message || 'Failed to reschedule appointment'; });
+      b.addCase(deleteAppointmentHard.fulfilled, (s,a)=>{ s.error = null; s.items = s.items.filter(x=>x._id !== (a.payload._id || a.meta.arg)); });
+      b.addCase(deleteAppointmentHard.rejected, (s,a)=>{ s.error = a.payload?.message || 'Failed to delete appointment'; });
   }
 });
 
